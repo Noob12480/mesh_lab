@@ -18,6 +18,7 @@ add_executable(mesh_lab
 )
 
 target_include_directories(mesh_lab PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/libs/eigen
 )
 

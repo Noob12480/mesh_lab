@@ -5,7 +5,7 @@
 #include"ObjIO.h"
 #include"string"
 #include"HalfEdgeMesh.h"
-#include"renderer/FrameBuffer.h"
+#include"renderer/Rasterizer.h"
 void testHalfEdgeMash(){
     std::string filename="assets/coca-cola.obj";
     ObjIO io;
@@ -71,8 +71,22 @@ void testHalfEdgeMash(){
     std::cout<<'\n'; 
 }
 void testRenderer(){
-    FrameBuffer buffer(16,16);
-    buffer.setPixel(1,1,{0,1,0});
+    FrameBuffer buffer(512,512);
+    buffer.clearDepth(1.0);
+    Rasterizer rasterizer(buffer);
+
+    Vec3d p0(20,40,0.99);
+    Vec3d p1(300,400,00.2);
+    Vec3d p2(500,200,0.1);
+    Vec3d color(0,1,0);
+    rasterizer.drawTriangle(p0,p1,p2,color);
+
+    Vec3d p3(0,0,0.3);
+    Vec3d p4(480,300,0.2);
+    Vec3d p5(200,500,0.05);
+    Vec3d color1(1,1,0);
+    rasterizer.drawTriangle(p3,p4,p5,color1);
+
     buffer.savePPM("test.ppm");
 }
 int main() {
@@ -80,6 +94,7 @@ int main() {
     SetConsoleCP(CP_UTF8);
 
     testRenderer();
+    //testHalfEdgeMash();
 
     return 0;
 }

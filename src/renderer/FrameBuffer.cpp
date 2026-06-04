@@ -2,9 +2,10 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <limits>
 FrameBuffer::FrameBuffer(int width, int height) : width(width), height(height){
     colorBuffer.resize(width*height);
-    depthBuffer.resize(width*height);
+    depthBuffer.resize(width*height,1.0);
 }
 
 int FrameBuffer::getWidth() const{
@@ -14,17 +15,17 @@ int FrameBuffer::getHeight() const{
     return height;
 }
 
-void FrameBuffer::clearColor(const Eigen::Vector3d& color){
+void FrameBuffer::clearColor(const Vec3d& color){
     std::fill(colorBuffer.begin(),colorBuffer.end(),color);
 }
 void FrameBuffer::clearDepth(double depth){
     std::fill(depthBuffer.begin(),depthBuffer.end(),depth);
 }
-void FrameBuffer::clear(const Eigen::Vector3d& color, double depth){
+void FrameBuffer::clear(const Vec3d& color, double depth){
     clearColor(color);
     clearDepth(depth);
 }
-void FrameBuffer::setPixel(int x, int y, const Eigen::Vector3d& color){
+void FrameBuffer::setPixel(int x, int y, const Vec3d& color){
     colorBuffer[index(x,y)]=color;
 }
 Eigen::Vector3d FrameBuffer::getPixel(int x, int y) const{

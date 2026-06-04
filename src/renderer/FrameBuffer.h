@@ -2,7 +2,7 @@
 
 #include<vector>
 #include<string>
-#include<Eigen/Core>
+#include"core/MathTypes.h"
 
 class FrameBuffer {
 public:
