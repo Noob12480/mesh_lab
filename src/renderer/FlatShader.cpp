@@ -8,7 +8,7 @@ VertexOutput FlatShader::vertex(const VertexInput& input) const{
     o.clipPosition = MVP*Vec4d(input.position.x(),input.position.y(),input.position.z(),1.0);
 
     o.worldPosition=input.position;
-    o.normal=input.normal;
+    o.normal=input.faceNormal;
     o.color=input.color;
     return o;
 }

@@ -160,6 +160,7 @@ int main() {
     //模型
     //std::string filename="assets/FinalBaseMesh.obj";
     std::string filename="assets/coca-cola.obj";
+    //std::string filename="assets/Low-Poly_Models.obj";
     ObjIO io;
     Mesh mesh;
     io.load(filename,mesh);
@@ -177,13 +178,15 @@ int main() {
 
         double dt = 1.0 / 60.0;
         updateOrbitCamera(camera, modelCenter, radius, yaw, pitch, dt);
-        Mat4d VP = camera.projectionMatrix() * camera.viewMatrix();
+
+        Mat4d Model=Mat4d::Identity();
+        Mat4d MVP = Model * camera.projectionMatrix() * camera.viewMatrix();
 
         buffer.clearColor(Vec3d(0, 0, 0));
         buffer.clearDepth(1.0);
 
-        FlatShader shader(VP,Vec3d(0,1,0),Vec3d(0,1,1));
-
+        //FlatShader shader(MVP,Vec3d(0,1,0),Vec3d(0,1,1));
+        PhongShader shader(MVP,Model,Vec3d(1.0,1.0,1.0), Vec3d(0,0,5), camera.getPosition());
         rasterizer.drawMesh(halfEdgeMesh, shader);
         //rasterizer.drawMesh(halfEdgeMesh, VP, Vec3d(0,1,0));
         window.present(buffer);

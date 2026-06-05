@@ -6,6 +6,52 @@ Rasterizer::Rasterizer(FrameBuffer &buffer) : buffer(buffer){}
 double cross(const Vec2d &v1, const Vec2d &v2){
     return v1.x()*v2.y()-v2.x()*v1.y();
 }
+//顶点法线
+std::vector<Vec3d> computeVertNormals(const HalfEdgeMesh& mesh) {
+    const auto& vertices = mesh.getVertices();
+    const auto& faces = mesh.getFaces();
+
+    std::vector<Vec3d> vertNormals(vertices.size(), Vec3d(0, 0, 0));
+
+    auto position = [&](int vid) -> Vec3d {
+        const auto& v=vertices.at(vid);
+        return Vec3d(v.x, v.y, v.z);
+    };
+
+    for (int fid = 0; fid < faces.size(); ++fid) {
+        std::vector<int> vi = mesh.faceVertices(fid);
+        if(vi.size()<3) continue;
+
+        Vec3d faceNormal(0, 0, 0);
+
+        //Newell
+        for (int i=0;i<vi.size();i++) {
+            int j=(i+1)%vi.size();
+            Vec3d p0=position(vi[i]);
+            Vec3d p1=position(vi[j]);
+
+            faceNormal.x()+=(p0.y()-p1.y())*(p0.z()+p1.z());
+            faceNormal.y()+=(p0.z()-p1.z())*(p0.x()+p1.x());
+            faceNormal.z()+=(p0.x()-p1.x())*(p0.y()+p1.y());
+        }
+        if (faceNormal.norm() < 1e-12) continue;
+        faceNormal.normalize();
+
+        for (int vid : vi) {
+            vertNormals.at(vid) += faceNormal;
+        }
+    }
+    for (auto& n : vertNormals) {
+        if (n.norm() > 1e-12) {
+            n.normalize();
+        } else {
+            n = Vec3d(0, 0, 1);
+        }
+    }
+
+    return vertNormals;
+}
+
 void Rasterizer::drawTriangle2D(const Vec2d& p0,const Vec2d& p1,const Vec2d& p2,const Vec3d& color){
     //AABB
     int minX,minY,maxX,maxY;
@@ -126,9 +172,11 @@ void Rasterizer::drawMesh(const HalfEdgeMesh &mesh, const Mat4d &MVP, const Vec3
 void Rasterizer::drawTriangle(const VertexOutput& o0,const VertexOutput& o1,const VertexOutput& o2,const Shader &shader){
     //AABB
     Vec3d p0,p1,p2;
-    p0=NDCToScreen(clipToNDC(o0.clipPosition));
-    p1=NDCToScreen(clipToNDC(o1.clipPosition));
-    p2=NDCToScreen(clipToNDC(o2.clipPosition));
+    Vec3d ndc0,ndc1,ndc2;
+    if(!clipToNDC(o0.clipPosition,ndc0)||!clipToNDC(o1.clipPosition,ndc1)||!clipToNDC(o2.clipPosition,ndc2))return;
+    p0=NDCToScreen(ndc0);
+    p1=NDCToScreen(ndc1);
+    p2=NDCToScreen(ndc2);
 
     int minX,minY,maxX,maxY;
     minX=std::min(std::floor(p0.x()),std::min(std::floor(p1.x()),std::floor(p2.x())));
@@ -185,11 +233,7 @@ void Rasterizer::drawTriangle(const VertexOutput& o0,const VertexOutput& o1,cons
     }
 }
 
-void Rasterizer::drawTriangle3D(const Vec3d &p0,const Vec3d &p1,const Vec3d &p2,const Shader &shader){
-    Vec3d n=(p1-p0).cross(p2-p1).normalized();
-
-    const VertexInput v0={p0,n},v1={p1,n},v2={p2,n};
-
+void Rasterizer::drawTriangle3D(const VertexInput &v0,const VertexInput &v1,const VertexInput &v2,const Shader &shader){
     VertexOutput o0,o1,o2;
     o0=shader.vertex(v0);
     o1=shader.vertex(v1);
@@ -203,35 +247,60 @@ void Rasterizer::drawTriangle3D(const Vec3d &p0,const Vec3d &p1,const Vec3d &p2,
 }
 
 void Rasterizer::drawMesh(const HalfEdgeMesh &mesh, const Shader &shader){
+    //顶点法线
+    std::vector<Vec3d> vertNormals;
+    if(shader.needVertNormal()){
+        vertNormals=computeVertNormals(mesh);
+    }
     for(int i=0;i<mesh.getFaces().size();i++){
         std::vector<int> vi=mesh.faceVertices(i);
 
         if(vi.size()<3) continue;
         int o=vi[0];
-        const HEVert &v0=mesh.getVertices().at(o);
-        Vec3d p0(v0.x,v0.y,v0.z);
+        const HEVert &vert0=mesh.getVertices().at(o);
+        Vec3d p0(vert0.x,vert0.y,vert0.z);
 
         for(int j=1;j+1<vi.size();j++){
             int vertId1=vi[j];
             int vertId2=vi[j+1];
 
-            const HEVert &v1=mesh.getVertices().at(vertId1);
-            const HEVert &v2=mesh.getVertices().at(vertId2);
+            const HEVert &vert1=mesh.getVertices().at(vertId1);
+            const HEVert &vert2=mesh.getVertices().at(vertId2);
             
-            Vec3d p1(v1.x,v1.y,v1.z);
-            Vec3d p2(v2.x,v2.y,v2.z);
+            Vec3d p1(vert1.x,vert1.y,vert1.z);
+            Vec3d p2(vert2.x,vert2.y,vert2.z);
 
-            drawTriangle3D(p0,p1,p2,shader);
+            //面法线
+            Vec3d fn=(p1-p0).cross(p2-p1).normalized();
+            VertexInput v0={p0,fn},v1={p1,fn},v2={p2,fn};
+
+            if(shader.needVertNormal()){
+                v0.vertNormal=vertNormals[o];
+                v1.vertNormal=vertNormals[vertId1];
+                v2.vertNormal=vertNormals[vertId2];
+            }
+            drawTriangle3D(v0,v1,v2,shader);
         }
     }
 }
 
-Vec3d Rasterizer::clipToNDC(const Vec4d& clip) const{
-    if(std::abs(clip.w())<1e-8) {
-        //std::cerr<<"w值为0"<<'\n';
-        return Vec3d(0,0,0);
+bool Rasterizer::insideClipSpace(const Vec4d& clip) const {
+    double w = clip.w();
+    return w>1e-8
+        &&clip.x()>=-w&&clip.x()<= w&&clip.y()>=-w&&clip.y()<= w
+        &&clip.z()>=-w&&clip.z()<=w;
+}
+
+bool Rasterizer::clipToNDC(const Vec4d& clip, Vec3d& ndc) const {
+    if (std::abs(clip.w()) < 1e-8) {
+        return false;
     }
-    return Vec3d(clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w());
+    ndc = Vec3d(
+        clip.x() / clip.w(),
+        clip.y() / clip.w(),
+        clip.z() / clip.w()
+    );
+    return true;
 }
 
 Vec3d Rasterizer::NDCToScreen(const Vec3d &pos) const{
@@ -248,7 +317,8 @@ bool Rasterizer::transPoint(const Vec3d &p, const Mat4d &MVP, Vec3d &screenPos) 
         return false;
     }
 
-    Vec3d ndc=clipToNDC(clip);
+    Vec3d ndc;
+    if(!clipToNDC(clip, ndc))return false;
     screenPos=NDCToScreen(ndc);
     return true;
 }
