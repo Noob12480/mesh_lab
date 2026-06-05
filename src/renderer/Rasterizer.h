@@ -1,8 +1,9 @@
 #pragma once
 
-#include "renderer/FrameBuffer.h"
-#include "core/MathTypes.h"
-#include "geometry/HalfEdgeMesh.h"
+#include"renderer/FrameBuffer.h"
+#include"core/MathTypes.h"
+#include"geometry/HalfEdgeMesh.h"
+#include"Shader.h" 
 class Rasterizer {
 public:
     explicit Rasterizer(FrameBuffer &buffer);
@@ -11,6 +12,10 @@ public:
     void drawTriangle(const Vec3d &p0,const Vec3d &p1,const Vec3d &p2,const Vec3d &color);
     void drawTriangle3D(const Vec3d &p0,const Vec3d &p1,const Vec3d &p2,const Mat4d &MVP,const Vec3d &color);
     void drawMesh(const HalfEdgeMesh &mesh, const Mat4d &MVP, const Vec3d &color);
+
+    void drawTriangle(const VertexOutput &o0,const VertexOutput &o1,const VertexOutput &o2,const Shader &shader);
+    void drawTriangle3D(const Vec3d &p0,const Vec3d &p1,const Vec3d &p2, const Shader &shader);
+    void drawMesh(const HalfEdgeMesh &mesh, const Shader &shader);
 
 private:
     FrameBuffer& buffer;

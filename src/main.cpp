@@ -154,11 +154,12 @@ int main() {
     camera.setPosition(Vec3d(0, 0, 5));
     camera.setTarget(Vec3d(0, 0, 0));
     camera.setUp(Vec3d(0, 1, 0));
-    camera.setPerspective(90, 1.0, 1.0, 10.0);
+    camera.setPerspective(90, 1.0, 0.1, 100.0);
     
     Win32Window window(512, 512, L"Mesh Lab");
     //模型
-    std::string filename="assets/FinalBaseMesh.obj";
+    //std::string filename="assets/FinalBaseMesh.obj";
+    std::string filename="assets/coca-cola.obj";
     ObjIO io;
     Mesh mesh;
     io.load(filename,mesh);
@@ -180,7 +181,11 @@ int main() {
 
         buffer.clearColor(Vec3d(0, 0, 0));
         buffer.clearDepth(1.0);
-        rasterizer.drawMesh(halfEdgeMesh, VP, Vec3d(0, 1, 0));
+
+        FlatShader shader(VP,Vec3d(0,1,0),Vec3d(0,1,1));
+
+        rasterizer.drawMesh(halfEdgeMesh, shader);
+        //rasterizer.drawMesh(halfEdgeMesh, VP, Vec3d(0,1,0));
         window.present(buffer);
     }
 
