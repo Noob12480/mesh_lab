@@ -16,6 +16,10 @@ namespace {
     };
 }
 bool HalfEdgeMesh::buildFromMesh(const Mesh &mesh){
+    texcoords = mesh.texcoords;
+    // for(int i=0;i<3;i++){
+    //     std::cout<<texcoords[i].x()<<texcoords[i].y()<<'\n';
+    // }
     std::unordered_map<EdgeKey, int, EdgeKeyHash> edgeMap;
     //建立顶点
     for(auto v:mesh.positions){
@@ -23,13 +27,16 @@ bool HalfEdgeMesh::buildFromMesh(const Mesh &mesh){
     }
     //建立面、边对
     for(auto f:mesh.faces){
+
         int prev=-1;
         int start=-1;
         int prevEdgeId=-1;
         int startEdgeId=-1;
+        int vt0=-1;
         for(auto objIndex:f.indices){
             if(start==-1){
                 start=objIndex.v;
+                vt0=objIndex.vt;
             } else {
                 HEEdge edge;
                 int faceId=faces.size();
@@ -42,6 +49,8 @@ bool HalfEdgeMesh::buildFromMesh(const Mesh &mesh){
 
                 edge.face=faceId;
                 edge.vert=vertId;
+                edge.texcoord=objIndex.vt;
+                // std::cout<<objIndex.vt<<'\n';
                 
                 if(prevEdgeId!=-1){
                     HEEdge& prevEdge=edges.at(prevEdgeId);
@@ -79,6 +88,7 @@ bool HalfEdgeMesh::buildFromMesh(const Mesh &mesh){
 
         edge.face=faceId;
         edge.vert=vertId;
+        edge.texcoord=vt0;
                 
         if(prevEdgeId!=-1){
             HEEdge& prevEdge=edges.at(prevEdgeId);

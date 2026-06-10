@@ -1,7 +1,7 @@
 #include"Shader.h"
 
-FlatShader::FlatShader(const Mat4d& MVP, const Mat4d& Model, const Vec3d& baseColor, const Vec3d& lightPos, const Vec3d& cameraPos)
-: MVP(MVP),Model(Model),baseColor(baseColor),lightPos(lightPos),cameraPos(cameraPos){
+FlatShader::FlatShader(const Mat4d& MVP, const Mat4d& Model, const Material& material, const Vec3d& lightPos, const Vec3d& cameraPos)
+: MVP(MVP),Model(Model),material(material),lightPos(lightPos),cameraPos(cameraPos){
     Mat3d M3 = Model.block<3, 3>(0, 0);
     normalMatrix = M3.inverse().transpose();
 }
@@ -13,10 +13,11 @@ VertexOutput FlatShader::vertex(const VertexInput& input) const{
     Vec4d worldPos=Model*local;
     o.worldPosition=Vec3d(worldPos.x(),worldPos.y(),worldPos.z());
     o.normal=(normalMatrix*input.faceNormal).normalized();
-    o.color=baseColor;
+    o.color=input.color;
+    o.uv=input.uv;
     return o;
 }
 
 Vec3d FlatShader::fragment(const VertexOutput& input) const{
-    return BlinnPhong::shade(baseColor,input.worldPosition,input.normal,lightPos,cameraPos);
+    return BlinnPhong::shade(material.baseColorAt(input.uv),input.worldPosition,input.normal,lightPos,cameraPos);
 }

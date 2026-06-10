@@ -14,7 +14,7 @@
 struct ShaderContext {
     Mat4d MVP;
     Mat4d Model;
-    Vec3d baseColor;
+    const Material& material;
     Vec3d lightDir;
     Vec3d lightPos;
     Vec3d cameraPos;
@@ -34,7 +34,7 @@ void init(){
             return std::make_unique<FlatShader>(
                 ctx.MVP,
                 ctx.Model,
-                ctx.baseColor,
+                ctx.material,
                 ctx.lightPos,
                 ctx.cameraPos
             );
@@ -46,7 +46,7 @@ void init(){
             return std::make_unique<PhongShader>(
                 ctx.MVP,
                 ctx.Model,
-                ctx.baseColor,
+                ctx.material,
                 ctx.lightPos,
                 ctx.cameraPos
             );
@@ -54,93 +54,6 @@ void init(){
     });
 }
 
-void testHalfEdgeMash(){
-    std::string filename="assets/coca-cola.obj";
-    ObjIO io;
-    Mesh mesh;
-    io.load(filename,mesh);
-    
-    // int target = 64;
-    // int count = 0;
-
-    // for (int fi = 0; fi < mesh.faces.size(); ++fi) {
-    //     for (auto idx : mesh.faces[fi].indices) {
-    //         if (idx.v == target) {
-    //             std::cout << "internal vertex " << target
-    //                     << " used in face " << fi << '\n';
-    //             count++;
-    //         }
-    //     }
-    // }
-
-    // std::cout << "used count = " << count << '\n';
-    
-    HalfEdgeMesh halfEdgeMesh;
-    halfEdgeMesh.buildFromMesh(mesh);
-    std::cout<<"网格合法性验证:\n"<<halfEdgeMesh.validate()<<'\n';
-
-    std::vector<int> v1=halfEdgeMesh.faceVertices(0);
-    std::cout<<"面0的顶点:"<<'\n';
-    for(auto v:v1){
-        std::cout<<v<<' ';
-    }
-    std::cout<<'\n';
-
-    std::vector<int> e1=halfEdgeMesh.faceEdges(0);
-    std::cout<<"面0的边:"<<'\n';
-    for(auto e:e1){
-        std::cout<<e<<' ';
-    }
-    std::cout<<'\n';
-
-    int prevVert=halfEdgeMesh.edgeOrigin(0);
-    int targetVert=halfEdgeMesh.edgeTarget(0);
-    std::cout<<"边0: "<<prevVert<<' '<<targetVert<<'\n';
-
-    std::vector<int> v2=halfEdgeMesh.vertexNeighbors(290);
-    std::cout<<"顶点290的邻接顶点:"<<'\n';
-    for(auto v:v2){
-        std::cout<<v<<' ';
-    }
-    std::cout<<'\n'; 
-
-    std::vector<int> e2=halfEdgeMesh.vertexEdges(290);
-    std::cout<<"顶点290的邻接边:"<<'\n';
-    for(auto e:e2){
-        std::cout<<e<<' ';
-    }
-    std::cout<<'\n'; 
-
-    std::vector<int> f1=halfEdgeMesh.vertexFaces(290);
-    std::cout<<"顶点290的邻接面:"<<'\n';
-    for(auto f:f1){
-        std::cout<<f<<' ';
-    }
-    std::cout<<'\n'; 
-}
-void testRenderer(){
-    FrameBuffer buffer(512, 512);
-    buffer.clearColor(Vec3d(0, 0, 0));
-    buffer.clearDepth(1.0);
-
-    Rasterizer rasterizer(buffer);
-
-    Camera camera;
-    camera.setPosition(Vec3d(0, 0, 5));
-    camera.setTarget(Vec3d(0, 0, 0));
-    camera.setUp(Vec3d(0, 1, 0));
-    camera.setPerspective(90, 1.0, 1.0, 10.0);
-
-    Mat4d VP = camera.projectionMatrix() * camera.viewMatrix();
-
-    Vec3d p0(-1, -1, 0);
-    Vec3d p1( 1, -1, 0);
-    Vec3d p2( 0,  1, 0);
-
-    rasterizer.drawTriangle3D(p0, p1, p2, VP, Vec3d(0, 1, 0));
-
-    buffer.savePPM("test.ppm");
-}
 void updateCamera(Camera& camera, const Vec3d& modelCenter, double radius, double& yaw, double& pitch, double dt){
     const Vec3d worldUp(0, 1, 0);
 
@@ -233,8 +146,9 @@ int main(int argc, char** argv) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
+    init();
     //模型
-    std::string filename="assets/FinalBaseMesh.obj";
+    std::string filename="assets/models/FinalBaseMesh.obj";
     //std::string filename="assets/coca-cola.obj";
     //std::string filename="assets/Low-Poly_Models.obj";
     if (argc >= 2) {
@@ -249,8 +163,15 @@ int main(int argc, char** argv) {
     HalfEdgeMesh halfEdgeMesh;
     halfEdgeMesh.buildFromMesh(mesh);
     std::cout<<"网格合法性验证:\n"<<halfEdgeMesh.validate()<<'\n';
+    
+    //纹理
+    Texture texture;
+    texture.loadPPM("assets/textures/coca-cola-zero.ppm");
+    //材质
+    Material material;
+    material.setBaseColor(Vec3d(1.0,1.0,1.0));
+    material.setTexture(&texture);
 
-    init();
     //光栅化渲染器
     FrameBuffer buffer(512, 512);
     Rasterizer rasterizer(buffer);
@@ -285,12 +206,12 @@ int main(int argc, char** argv) {
 
         //FlatShader shader(MVP,Vec3d(0,1,0),Vec3d(0,1,1));
         //PhongShader shader();
-        //按P切换着色模型
+        //按R切换着色模型
         updateShader();
 
         //按F切换背面剔除模式
         updateCullMode(rasterizer);
-        ShaderContext ctx={MVP,Model,Vec3d(1.0,1.0,1.0),Vec3d(0,0,1),Vec3d(0,0,5), camera.getPosition()};
+        ShaderContext ctx={MVP,Model,material,Vec3d(0,0,1),Vec3d(0,0,5), camera.getPosition()};
 
         std::string shaderName=shaders[shaderIndex].name;
         auto shader = shaders[shaderIndex].create(ctx);

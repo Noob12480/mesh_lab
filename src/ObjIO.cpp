@@ -63,6 +63,7 @@ bool ObjIO::load(const std::string &filename, Mesh &mesh){
                     std::cerr << "不合法的面索引: " << line << '\n';
                     return false;
                 }
+                //std::cout<<idx.vt<<'\n';
                 f.indices.push_back(idx);
             }
             mesh.faces.push_back(f);

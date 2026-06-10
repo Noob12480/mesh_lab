@@ -1,10 +1,12 @@
 #pragma once
 
-#include "core/MathTypes.h"
+#include"core/MathTypes.h"
+#include"Material.h"
 
 struct VertexInput {
     Vec3d position=Vec3d(0, 0, 0);
     Vec3d faceNormal=Vec3d(0, 0, 1);
+    Vec2d uv=Vec2d(0, 0);
     Vec3d vertNormal=Vec3d(0, 0, 1);
     Vec3d color=Vec3d(1, 1, 1);
 };
@@ -14,6 +16,7 @@ struct VertexOutput {
     Vec3d worldPosition;
     Vec3d normal;
     Vec3d color;
+    Vec2d uv;
 };
 
 struct BlinnPhong {
@@ -51,7 +54,7 @@ public:
 
 class FlatShader : public Shader {
 public:
-    FlatShader(const Mat4d& MVP,const Mat4d& Model,const Vec3d& baseColor,const Vec3d& lightPos,const Vec3d& cameraPos);
+    FlatShader(const Mat4d& MVP,const Mat4d& Model, const Material& material,const Vec3d& lightPos,const Vec3d& cameraPos);
     VertexOutput vertex(const VertexInput& input) const;
     Vec3d fragment(const VertexOutput& input) const;
 
@@ -60,14 +63,14 @@ private:
     Mat4d Model;
     Mat3d normalMatrix;
 
-    Vec3d baseColor;
+    const Material& material;
     Vec3d lightPos;
     Vec3d cameraPos;
 };
 
 class PhongShader : public Shader {
 public:
-    PhongShader(const Mat4d& MVP, const Mat4d& Model, const Vec3d& baseColor, const Vec3d& lightPos, const Vec3d& cameraPos);
+    PhongShader(const Mat4d& MVP, const Mat4d& Model, const Material& material, const Vec3d& lightPos, const Vec3d& cameraPos);
     VertexOutput vertex(const VertexInput& input) const;
     Vec3d fragment(const VertexOutput& input) const;
     
@@ -78,7 +81,7 @@ private:
     Mat4d Model;
     Mat3d normalMatrix;
 
-    Vec3d baseColor;
+    const Material& material;
     Vec3d lightPos;
     Vec3d cameraPos;
 };

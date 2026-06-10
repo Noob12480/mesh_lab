@@ -258,6 +258,7 @@ void Rasterizer::drawTriangle(const VertexOutput& o0,const VertexOutput& o1,cons
                     o.worldPosition=a0*o0.worldPosition+a1*o1.worldPosition+a2*o2.worldPosition;
                     o.normal=a0*o0.normal+a1*o1.normal+a2*o2.normal;
                     o.color=a0*o0.color+a1*o1.color+a2*o2.color;
+                    o.uv=a0*o0.uv+a1*o1.uv+a2*o2.uv;
                         
                     Vec3d color=shader.fragment(o);
                         
@@ -303,30 +304,79 @@ void Rasterizer::drawMesh(const HalfEdgeMesh &mesh, const Shader &shader){
     if(shader.needVertNormal()){
         vertNormals=computeVertNormals(mesh);
     }
+    //恢复faceCorner顺序
+    const auto& verts = mesh.getVertices();
+    const auto& texcoords = mesh.getTexcoords();
+    int texSize = static_cast<int>(texcoords.size());
+
     for(int i=0;i<mesh.getFaces().size();i++){
-        std::vector<int> vi=mesh.faceVertices(i);
+        std::vector<int> ei=mesh.faceEdges(i);
 
-        if(vi.size()<3) continue;
-        int o=vi[0];
-        const HEVert &vert0=mesh.getVertices().at(o);
-        Vec3d p0(vert0.x,vert0.y,vert0.z);
+        if(ei.size()<3) continue;
 
-        for(int j=1;j+1<vi.size();j++){
-            int vertId1=vi[j];
-            int vertId2=vi[j+1];
+        std::vector<int> cornerVerts;
+        std::vector<Vec2d> cornerUVs;
 
+        cornerVerts.reserve(ei.size());
+        cornerUVs.reserve(ei.size());
+
+        for (auto e:ei) {
+            int vid = mesh.edgeOrigin(e);
+
+            int pe = mesh.getEdges().at(e).prev;
+            int vt = mesh.edgeTexcoord(pe);
+
+            Vec2d uv(0.0, 0.0);
+            if (vt >= 0 && vt < texSize) {
+                uv = texcoords.at(vt);
+            }
+
+            cornerVerts.push_back(vid);
+            cornerUVs.push_back(uv);
+        }
+
+        Vec3d fn(0,0,0);
+
+        for (int k = 0; k < static_cast<int>(cornerVerts.size()); ++k) {
+            int k2 = (k + 1) % static_cast<int>(cornerVerts.size());
+
+            const HEVert& va = verts.at(cornerVerts[k]);
+            const HEVert& vb = verts.at(cornerVerts[k2]);
+
+            Vec3d p0(va.x, va.y, va.z);
+            Vec3d p1(vb.x, vb.y, vb.z);
+
+            fn.x()+=(p0.y()-p1.y())*(p0.z()+p1.z());
+            fn.y()+=(p0.z()-p1.z())*(p0.x()+p1.x());
+            fn.z()+=(p0.x()-p1.x())*(p0.y()+p1.y());
+        }
+
+        if (fn.norm()<1e-8) continue;
+        fn.normalize();
+        
+        for(int j=1;j+1<cornerVerts.size();j++){
+            int vertId0=cornerVerts[0];
+            int vertId1=cornerVerts[j];
+            int vertId2=cornerVerts[j+1];
+
+            const HEVert &vert0=mesh.getVertices().at(vertId0);
             const HEVert &vert1=mesh.getVertices().at(vertId1);
             const HEVert &vert2=mesh.getVertices().at(vertId2);
             
+            Vec3d p0(vert0.x,vert0.y,vert0.z);
             Vec3d p1(vert1.x,vert1.y,vert1.z);
             Vec3d p2(vert2.x,vert2.y,vert2.z);
 
-            //面法线
-            Vec3d fn=(p1-p0).cross(p2-p1).normalized();
-            VertexInput v0={p0,fn},v1={p1,fn},v2={p2,fn};
+            Vec2d uv0 = cornerUVs[0];
+            Vec2d uv1 = cornerUVs[j];
+            Vec2d uv2 = cornerUVs[j+1];
+
+            int texSize=mesh.getTexcoords().size();
+
+            VertexInput v0={p0,fn,uv0},v1={p1,fn,uv1},v2={p2,fn,uv2};
 
             if(shader.needVertNormal()){
-                v0.vertNormal=vertNormals[o];
+                v0.vertNormal=vertNormals[vertId0];
                 v1.vertNormal=vertNormals[vertId1];
                 v2.vertNormal=vertNormals[vertId2];
             }
@@ -426,6 +476,7 @@ VertexOutput Rasterizer::lerpOut(const VertexOutput &a, const VertexOutput &b, d
     VertexOutput r;
     r.clipPosition=a.clipPosition+t*(b.clipPosition-a.clipPosition);
     r.worldPosition=a.worldPosition+t*(b.worldPosition-a.worldPosition);
+    r.uv=a.uv+t*(b.uv-a.uv);
     r.normal=a.normal+t*(b.normal-a.normal);
     r.color=a.color+t*(b.color-a.color);
     return r;

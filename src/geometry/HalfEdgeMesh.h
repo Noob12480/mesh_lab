@@ -1,6 +1,7 @@
 #pragma once
 #include"Mesh.h"
 #include<vector>
+#include"core/MathTypes.h"
 struct HEVert{
     double x,y,z;
     int edge=-1;
@@ -12,6 +13,7 @@ struct HEEdge{
     int face=-1;
     int next=-1;
     int prev=-1;
+    int texcoord;
 };
 
 struct HEFace{
@@ -24,10 +26,12 @@ public:
     const std::vector<HEVert>& getVertices() const { return vertices;};
     const std::vector<HEEdge>& getEdges() const { return edges; };
     const std::vector<HEFace>& getFaces() const { return faces; };
+    const std::vector<Vec2d>& getTexcoords() const { return texcoords; }
     int nextEdge(int e) const { return edges[e].next; }
     int pairEdge(int e) const { return edges[e].pair; }
     int edgeToVertex(int e) const { return edges[e].vert; }
     int edgeFace(int e) const { return edges[e].face; }
+    int edgeTexcoord(int e) const { return edges[e].texcoord; }
 
     bool validate() const;
 
@@ -36,7 +40,6 @@ public:
 
     int edgeOrigin(int edgeId) const;
     int edgeTarget(int edgeId) const;
-    int prevEdge(int edgeId) const; 
 
     std::vector<int> vertexNeighbors(int vertId) const;
     std::vector<int> vertexEdges(int vertId) const;
@@ -48,6 +51,7 @@ private:
     std::vector<HEVert> vertices;
     std::vector<HEEdge> edges;
     std::vector<HEFace> faces;
+    std::vector<Vec2d> texcoords;
 };
 
 
